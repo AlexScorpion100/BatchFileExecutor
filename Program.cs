@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -18,6 +19,8 @@ class Program
 				Console.WriteLine("║ Select a batch file to run ║");
 				Console.WriteLine("╠════════════════════════════╣");
 				List<string> batchFiles = GetBatchFiles();
+				batchFiles.AddRange(GetAutoHotkeyFiles());
+
 				int exitOption = batchFiles.Count + 1;
 
 				for (int i = 0; i < batchFiles.Count; i++)
@@ -41,7 +44,15 @@ class Program
 					if (selectedOption >= 1 && selectedOption <= batchFiles.Count)
 					{
 						string selectedBatchFile = batchFiles[selectedOption - 1];
-						ExecuteBatchFile(selectedBatchFile);
+
+						if (selectedBatchFile.EndsWith(".bat"))
+						{
+							ExecuteBatchFile(selectedBatchFile);
+						}
+						else if (selectedBatchFile.EndsWith(".ahk"))
+						{
+							ExecuteAutoHotkeyFile(selectedBatchFile);
+						}
 					}
 					else if (selectedOption == exitOption)
 					{
@@ -127,4 +138,84 @@ class Program
 		}
 	}
 
+	static List<string> GetAutoHotkeyFiles()
+	{
+		string scriptFolder = "Scripts";
+		string[] files = Directory.GetFiles(scriptFolder, "*.ahk");
+		List<string> batchFiles = new List<string>();
+
+		foreach (string file in files)
+		{
+			batchFiles.Add(Path.GetFileName(file));
+		}
+
+		return batchFiles;
+	}
+
+	static void ExecuteAutoHotkeyFile(string ahkFilePath)
+	{
+		// Locate AutoHotkey installation path from registry
+		string autoHotkeyExePath = GetAutoHotkeyExePath();
+		string scriptFolder = "Scripts";
+
+		if (string.IsNullOrEmpty(autoHotkeyExePath))
+		{
+			Console.WriteLine("AutoHotkey is not installed or its installation path could not be found.");
+			Console.WriteLine("Please provide the path to the AutoHotkey executable manually.");
+			Console.WriteLine("Press Enter to exit.");
+			Console.ReadLine();
+			return;
+		}
+
+		try
+		{
+			Process process = new Process();
+			process.StartInfo.FileName = autoHotkeyExePath;
+			process.StartInfo.Arguments = Path.Combine(scriptFolder, ahkFilePath);
+			process.Start();
+
+			Console.ForegroundColor = ConsoleColor.Green;
+			Console.WriteLine("AutoHotkey script started.");
+			Console.ResetColor();
+		}
+		catch (Exception ex)
+		{
+			Console.ForegroundColor = ConsoleColor.Red;
+			Console.WriteLine("Error running AutoHotkey script: " + ex.Message);
+			Console.ResetColor();
+		}
+
+	}
+
+	static string GetAutoHotkeyExePath()
+	{
+		string autoHotkeyKey = @"Software\AutoHotkey";
+		using (RegistryKey regKey = Registry.CurrentUser.OpenSubKey(autoHotkeyKey))
+		{
+			if (regKey != null)
+			{
+				object exePathValue = regKey.GetValue("ExePath");
+				if (exePathValue != null)
+				{
+					return exePathValue.ToString();
+				}
+			}
+		}
+
+		string[] possiblePaths = {
+			@"C:\Program Files\AutoHotkey\AutoHotkey.exe",  // Default installation path
+            @"C:\Program Files (x86)\AutoHotkey\AutoHotkey.exe"
+            // Add more paths if necessary
+        };
+
+		foreach (string path in possiblePaths)
+		{
+			if (File.Exists(path))
+			{
+				return path;
+			}
+		}
+
+		return null;
+	}
 }
