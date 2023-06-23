@@ -396,3 +396,6 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+/Scripts/copy-email.bat
+/Scripts/copy-pass.bat
+/Scripts/wifi.bat
