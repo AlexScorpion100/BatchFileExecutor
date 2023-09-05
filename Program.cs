@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 
 class Program
 {
@@ -11,20 +12,31 @@ class Program
         try
         {
             bool hasArgs = args != null && args.Length > 0 ? true : false;
-            while (true && !hasArgs)
-            {
-                List<string> batchFiles = GetBatchFiles();
-                batchFiles.AddRange(GetAutoHotkeyFiles());
-                int exitOption = -99;
-                string choice = default;
+            string executableDirectory = System.IO.Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
+            List<string> batchFiles = GetBatchFiles(executableDirectory);
+            batchFiles.AddRange(GetAutoHotkeyFiles(executableDirectory));
+            int exitOption = -99;
+            string choice = default;
 
-                if (hasArgs)
+            if (hasArgs)
+            {
+                Console.WriteLine("Received command-line arguments:");
+                Console.WriteLine(args);
+
+                string selectedBatchFile = batchFiles[int.Parse(args[0]) - 1];
+
+                if (selectedBatchFile.EndsWith(".bat"))
                 {
-                    choice = args.First();
-                    Console.WriteLine(args);
-                    Console.ReadLine();
+                    ExecuteBatchFile(executableDirectory, selectedBatchFile);
                 }
-                else
+                else if (selectedBatchFile.EndsWith(".ahk"))
+                {
+                    ExecuteAutoHotkeyFile(executableDirectory,selectedBatchFile);
+                }
+            }
+            else
+            {
+                while (true && !hasArgs)
                 {
                     Console.Clear();
                     Console.WriteLine("╔════════════════════════════╗");
@@ -48,26 +60,36 @@ class Program
                     Console.WriteLine();
                     Console.Write("Enter your choice: ");
                     choice = Console.ReadLine();
-                }
 
-                if (int.TryParse(choice, out int selectedOption))
-                {
-                    if (selectedOption >= 1 && selectedOption <= batchFiles.Count)
-                    {
-                        string selectedBatchFile = batchFiles[selectedOption - 1];
 
-                        if (selectedBatchFile.EndsWith(".bat"))
-                        {
-                            ExecuteBatchFile(selectedBatchFile);
-                        }
-                        else if (selectedBatchFile.EndsWith(".ahk"))
-                        {
-                            ExecuteAutoHotkeyFile(selectedBatchFile);
-                        }
-                    }
-                    else if (selectedOption == exitOption)
+                    if (int.TryParse(choice, out int selectedOption))
                     {
-                        return;
+                        if (selectedOption >= 1 && selectedOption <= batchFiles.Count)
+                        {
+                            string selectedBatchFile = batchFiles[selectedOption - 1];
+
+                            if (selectedBatchFile.EndsWith(".bat"))
+                            {
+                                ExecuteBatchFile(executableDirectory, selectedBatchFile);
+                            }
+                            else if (selectedBatchFile.EndsWith(".ahk"))
+                            {
+                                ExecuteAutoHotkeyFile(executableDirectory, selectedBatchFile);
+                            }
+                        }
+                        else if (selectedOption == exitOption)
+                        {
+                            return;
+                        }
+                        else
+                        {
+                            if (!hasArgs)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Red;
+                                Console.WriteLine("Invalid choice. Please try again.");
+                                Console.ResetColor();
+                            }
+                        }
                     }
                     else
                     {
@@ -78,24 +100,16 @@ class Program
                             Console.ResetColor();
                         }
                     }
-                }
-                else
-                {
                     if (!hasArgs)
                     {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("Invalid choice. Please try again.");
+                        Console.WriteLine();
+                        Console.WriteLine("Press Enter to continue...");
+                        Console.ReadLine();
                         Console.ResetColor();
                     }
                 }
-                if (!hasArgs)
-                {
-                    Console.WriteLine();
-                    Console.WriteLine("Press Enter to continue...");
-                    Console.ReadLine();
-                    Console.ResetColor();
-                }
             }
+
         }
         catch (Exception ex)
         {
@@ -104,9 +118,9 @@ class Program
         }
     }
 
-    static List<string> GetBatchFiles()
+    static List<string> GetBatchFiles(string path)
     {
-        string scriptFolder =AppDomain.CurrentDomain.BaseDirectory + "/Scripts";
+        string scriptFolder = path + "\\Scripts";
         string[] files = Directory.GetFiles(scriptFolder, "*.bat");
         List<string> batchFiles = new List<string>();
 
@@ -118,9 +132,9 @@ class Program
         return batchFiles;
     }
 
-    static void ExecuteBatchFile(string fileName)
+    static void ExecuteBatchFile(string path, string fileName)
     {
-        string scriptFolder = AppDomain.CurrentDomain.BaseDirectory +"/Scripts";
+        string scriptFolder = path + "\\Scripts";
         string filePath = Path.Combine(scriptFolder, fileName);
 
         try
@@ -157,9 +171,10 @@ class Program
         }
     }
 
-    static List<string> GetAutoHotkeyFiles()
+    static List<string> GetAutoHotkeyFiles(string path)
     {
-        string scriptFolder = "Scripts";
+        string scriptFolder = path + "\\Scripts";
+        Console.WriteLine($"{scriptFolder}");  
         string[] files = Directory.GetFiles(scriptFolder, "*.ahk");
         List<string> batchFiles = new List<string>();
 
@@ -171,11 +186,11 @@ class Program
         return batchFiles;
     }
 
-    static void ExecuteAutoHotkeyFile(string ahkFilePath)
+    static void ExecuteAutoHotkeyFile(string path, string ahkFilePath)
     {
         // Locate AutoHotkey installation path from registry
         string autoHotkeyExePath = GetAutoHotkeyExePath();
-        string scriptFolder = "Scripts";
+        string scriptFolder = path + "\\Scripts";
 
         if (string.IsNullOrEmpty(autoHotkeyExePath))
         {
