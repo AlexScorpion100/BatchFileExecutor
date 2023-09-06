@@ -11,7 +11,8 @@ class Program
     {
         try
         {
-            bool hasArgs = args != null && args.Length > 0 ? true : false;
+            int argChoice = 0;
+            bool hasArgs = args != null && args.Length > 0 && int.TryParse(args[0], out argChoice) ? true : false;
             string executableDirectory = System.IO.Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
             List<string> batchFiles = GetBatchFiles(executableDirectory);
             batchFiles.AddRange(GetAutoHotkeyFiles(executableDirectory));
@@ -20,10 +21,9 @@ class Program
 
             if (hasArgs)
             {
-                Console.WriteLine("Received command-line arguments:");
-                Console.WriteLine(args);
+                Console.WriteLine("Received command-line arguments: " + argChoice);
 
-                string selectedBatchFile = batchFiles[int.Parse(args[0]) - 1];
+                string selectedBatchFile = batchFiles[argChoice];
 
                 if (selectedBatchFile.EndsWith(".bat"))
                 {
@@ -31,7 +31,7 @@ class Program
                 }
                 else if (selectedBatchFile.EndsWith(".ahk"))
                 {
-                    ExecuteAutoHotkeyFile(executableDirectory,selectedBatchFile);
+                    ExecuteAutoHotkeyFile(executableDirectory, selectedBatchFile);
                 }
             }
             else
@@ -174,7 +174,7 @@ class Program
     static List<string> GetAutoHotkeyFiles(string path)
     {
         string scriptFolder = path + "\\Scripts";
-        Console.WriteLine($"{scriptFolder}");  
+        Console.WriteLine($"{scriptFolder}");
         string[] files = Directory.GetFiles(scriptFolder, "*.ahk");
         List<string> batchFiles = new List<string>();
 
